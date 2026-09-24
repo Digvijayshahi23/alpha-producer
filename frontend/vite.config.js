@@ -12,13 +12,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
-  // Built into the backend package, which serves it: `uvx alpha-harness` needs no Node.
+  // Screens are already lazy. Splitting the framework out of the entry as well cost 24 kB
+  // gzipped more on first load for chunks that cache across wheel upgrades — worth it
+  // over a network, worth nothing from 127.0.0.1. The warning is written for a CDN.
   build: {
-    outDir: path.resolve(import.meta.dirname, '../backend/src/alpha_harness/web'),
-    emptyOutDir: true,
-    // Screens are already lazy. Splitting the framework out of the entry as well cost 24 kB
-    // gzipped more on first load for chunks that cache across wheel upgrades — worth it
-    // over a network, worth nothing from 127.0.0.1. The warning is written for a CDN.
     chunkSizeWarningLimit: 700,
   },
   server: {
