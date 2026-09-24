@@ -31,9 +31,11 @@ from .api import (
     auth,
     catalog,
     chat,
+    experiments,
     ga,
     lab_tasks,
     llm,
+    notes,
     portfolio,
     power_pool_lab,
     quarter,
@@ -45,6 +47,7 @@ from .api import (
     tools,
     update,
     vault,
+    workbench,
     ws,
 )
 from .api.auth import Session
@@ -174,6 +177,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(power_pool_lab.router)
     app.include_router(chat.router)
     app.include_router(update.router)
+    app.include_router(workbench.router)
+    app.include_router(notes.router)
+    app.include_router(experiments.router)
     app.include_router(ws.router)
 
     @app.get("/api/health", tags=["meta"])

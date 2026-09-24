@@ -594,3 +594,57 @@ class Submission(Base):
 
     alpha_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     submitted_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class LocalAlpha(Base):
+    """An alpha saved locally in the AlphaForge Workbench."""
+
+    __tablename__ = "local_alpha"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(255))
+    expression: Mapped[str] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
+    idea: Mapped[str | None] = mapped_column(Text)
+    data_rationale: Mapped[str | None] = mapped_column(Text)
+    operator_rationale: Mapped[str | None] = mapped_column(Text)
+    region: Mapped[str | None] = mapped_column(String(64))
+    universe: Mapped[str | None] = mapped_column(String(64))
+    dataset: Mapped[str | None] = mapped_column(String(64))
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(64), default="Draft")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow)
+
+
+class ResearchNote(Base):
+    """A Markdown research note, optionally linked to an alpha."""
+
+    __tablename__ = "research_note"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    content: Mapped[str] = mapped_column(Text)
+    linked_alpha_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("local_alpha.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow)
+
+
+class Experiment(Base):
+    """A structured hypothesis test around an alpha."""
+
+    __tablename__ = "experiment"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    hypothesis: Mapped[str | None] = mapped_column(Text)
+    base_alpha_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("local_alpha.id", ondelete="SET NULL")
+    )
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    results: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(64), default="Planned")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, onupdate=utcnow)
