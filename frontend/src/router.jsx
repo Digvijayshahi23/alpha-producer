@@ -190,10 +190,16 @@ const aiIndex = createRoute({
 })
 const aiTab = createRoute({ getParentRoute: () => ai, path: '$tab' })
 const aiThread = createRoute({ getParentRoute: () => ai, path: 'assistant/$threadId' })
-const pyramids = createRoute({
-  getParentRoute: () => root,
-  path: '/pyramids',
+const pyramids = createRoute({ getParentRoute: () => root, path: '/pyramids' })
+const pyramidsIndex = createRoute({
+  getParentRoute: () => pyramids,
+  path: '/',
   component: lazyRouteComponent(() => import('@/screens/pyramids'), 'PyramidsScreen'),
+})
+const pyramidDetails = createRoute({
+  getParentRoute: () => pyramids,
+  path: '/$region/$delay/$categoryId',
+  component: lazyRouteComponent(() => import('@/screens/pyramids/details'), 'PyramidDetailsScreen'),
 })
 const routeTree = root.addChildren([
   index,
@@ -211,7 +217,7 @@ const routeTree = root.addChildren([
   portfolio,
   alpha,
   ai.addChildren([aiIndex, aiTab, aiThread]),
-  pyramids,
+  pyramids.addChildren([pyramidsIndex, pyramidDetails]),
 ])
 /** A screen that throws says so instead of going blank (CLAUDE.md anti-goal 3), and offers
  * the way back: a render that failed on a half-loaded query succeeds on a second try. */

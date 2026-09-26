@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from ..brain.schemas import REGION_AGNOSTIC_REGION
 from ..brain.settings_schema import valid_values
 from ..catalog.pyramids import pyramid_grid
+from ..labs.pyramid import PyramidResolver
 from ..catalog.queries import FieldFilter, Tuple4
 from ..catalog.sync import SyncTarget
 from ..schemas import Out, SyncAllRun
@@ -65,6 +66,7 @@ class PyramidCell(Out):
     #: 3+ alphas this quarter.
     lit: bool
     synced: bool
+    local_count: int = 0
 
 
 class Quarter(Out):
@@ -290,7 +292,63 @@ async def cancel_run(run_id: int, state: State) -> Cancelled:
 @router.get("/pyramids")
 async def pyramids(state: State) -> PyramidGrid:
     """Every pyramid: its multiplier, this quarter's alpha count, and download state."""
-    return PyramidGrid.model_validate(await pyramid_grid(state.endpoints, state.catalog))
+    async with state.db.session() as session:
+        resolver = PyramidResolver(state.catalog)
+        local_counts = await resolver.get_pyramid_local_counts(session)
+
+    grid = await pyramid_grid(state.endpoints, state.catalog)
+    for cell in grid["cells"]:
+        key = (cell["region"], cell["delay"], cell["categoryId"])
+        cell["localCount"] = local_counts.get(key, 0)
+
+    return PyramidGrid.model_validate(grid)
+
+
+@router.get("/pyramids/{region}/{delay}/{category_id}")
+async def pyramid_details(region: str, delay: int, category_id: str, state: State) -> dict:
+    """Details for a specific pyramid: datasets, fields, and matched alphas."""
+    resolver = PyramidResolver(state.catalog)
+    
+    async with state.db.session() as session:
+        local_alphas = await resolver.get_local_alphas_for_pyramid(session, region, delay, category_id)
+        
+    datasets = await state.catalog.query(
+        f"SELECT * FROM data_set WHERE region = '{region}' AND delay = {delay} AND category_id = '{category_id}'"
+    )
+    fields = await state.catalog.query(
+        f"SELECT * FROM data_field WHERE region = '{region}' AND delay = {delay} AND category_id = '{category_id}'"
+    )
+    
+    # We could also get brain alphas, but wait, brain alpha table has `pyramids` JSON list.
+    # Let's get them from duckdb
+    brain_query = f"SELECT * FROM alpha WHERE region = '{region}' AND delay = {delay} AND pyramids IS NOT NULL AND pyramids != '[]'"
+    brain_alphas_raw = await state.catalog.query(brain_query)
+    brain_alphas = []
+    
+    # We need category name
+    cat_rows = await state.catalog.query(f"SELECT DISTINCT category_name FROM data_category WHERE category_id = '{category_id}' AND region = '{region}' LIMIT 1")
+    cat_name = cat_rows[0]["category_name"] if cat_rows else None
+    if cat_name:
+        target_pyramid_label = f"{region}/D{delay}/{cat_name.upper()}"
+        import json
+        for row in brain_alphas_raw:
+            try:
+                p_list = json.loads(row["pyramids"])
+                if target_pyramid_label in p_list:
+                    brain_alphas.append(row)
+            except Exception:
+                pass
+                
+    return {
+        "region": region,
+        "delay": delay,
+        "category_id": category_id,
+        "category_name": cat_name,
+        "datasets": datasets,
+        "fields": fields,
+        "local_alphas": [{"id": a.id, "name": a.name, "expression": a.expression} for a in local_alphas],
+        "brain_alphas": brain_alphas
+    }
 
 
 @router.get("/scopes")

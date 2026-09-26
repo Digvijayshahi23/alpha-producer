@@ -61,7 +61,8 @@ const times = (m) => (m == null ? DASH : `×${fmt.ratio(m, 1)}`)
 const SWATCH = 'h-4 w-6 shrink-0 rounded-xs border border-hairline-strong bg-pyramid-5'
 const VIEWS = [
   { value: 'multiplier', label: 'Multiplier' },
-  { value: 'alphas', label: 'Alphas' },
+  { value: 'alphas', label: 'BRAIN Alphas' },
+  { value: 'localAlphas', label: 'Local Alphas' },
 ]
 /**
  * A pyramid's standing this quarter, as three states rather than a ramp: BRAIN either counts
@@ -194,24 +195,24 @@ export function PyramidsScreen() {
   const needed = data?.alphasPerPyramid ?? 3
   /** A cell is a way in: open its market and narrow the Fields tab to just that category. */
   const openPyramid = (categoryId, region, delay) => {
-    const market = universes.get(`${region}-${delay}`)
-    if (!market) return
-    // Replace rather than merge: a category carried in beside a stale dataset or coverage
-    // filter lands the user on an empty table and no clue which filter emptied it.
-    useFieldFilter.getState().replace({ category_ids: [categoryId] })
-    open({ region, delay, universe: market.universe, instrumentType: market.instrumentType })
+    void navigate({
+      to: '/pyramids/$region/$delay/$categoryId',
+      params: { region, delay: String(delay), categoryId },
+    })
   }
   return (
     <Page>
-      <PageHeader title="Sync with BRAIN" description="Download Data Fields" />
+      <PageHeader title="Pyramid Lab" description="Pyramid Coverage Matrix and Sync" />
       <SyncHero scope={scope} onPick={open} />
       <RegionAgnosticHero scope={scope} onPick={open} />
       <Panel
-        title={view === 'alphas' ? 'Pyramid Alpha Distribution' : 'Pyramid Multiplier Map'}
+        title={view === 'multiplier' ? 'Pyramid Multiplier Map' : 'Pyramid Alpha Distribution'}
         description={
-          view === 'alphas'
-            ? 'Alphas you submitted in each pyramid this quarter.'
-            : 'What BRAIN pays for a submission in each pyramid.'
+          view === 'multiplier'
+            ? 'What BRAIN pays for a submission in each pyramid.'
+            : view === 'alphas'
+              ? 'Alphas you submitted in each pyramid this quarter.'
+              : 'Alphas in your local library for each pyramid.'
         }
         actions={<Segmented label="Cell value" value={view} onChange={setView} items={VIEWS} />}
       >
@@ -296,7 +297,7 @@ export function PyramidsScreen() {
                         const openable = cell.synced && universes.has(id)
                         const face = cn(
                           'num flex h-8 w-full items-center justify-center rounded-sm border whitespace-nowrap',
-                          ranked ? cn('text-ink', tint(cell.multiplier)) : quarter.face,
+                          ranked ? cn('text-ink', tint(cell.multiplier)) : view === 'localAlphas' ? (cell.localCount > 0 ? 'bg-primary-subtle text-ink' : 'bg-surface-2 text-ink-subtle') : quarter.face,
                           // Each mark runs along the axis it belongs to: horizontal rules
                           // frame the row, vertical rules frame the column, and all four
                           // enclose a cell that leads both.
@@ -307,7 +308,7 @@ export function PyramidsScreen() {
                             ? 'border-l-2 border-r-2 border-l-ink border-r-ink'
                             : 'border-l-hairline-strong border-r-hairline-strong',
                         )
-                        const shown = ranked ? times(cell.multiplier) : quarter.label
+                        const shown = ranked ? times(cell.multiplier) : view === 'localAlphas' ? fmt.int(cell.localCount) : quarter.label
                         return (
                           <td key={id}>
                             {openable ? (

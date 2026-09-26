@@ -137,8 +137,8 @@ export const NAV = [
   {
     to: '/pyramids',
     area: 'pyramids',
-    label: 'Sync with BRAIN',
-    icon: RefreshCwIcon,
+    label: 'Pyramid Lab',
+    icon: LayersIcon,
     tabs: [],
   },
 ]

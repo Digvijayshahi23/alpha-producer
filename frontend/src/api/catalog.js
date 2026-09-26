@@ -24,4 +24,5 @@ export const catalog = {
   availability: (id) => http.get(`${B}/fields/${encodeURIComponent(id)}/availability`),
   datasets: (s, search) => http.get(`${B}/datasets${scopeQs(s, { search })}`),
   pyramids: () => http.get(`${B}/pyramids`),
+  pyramidDetails: (region, delay, categoryId) => http.get(`${B}/pyramids/${region}/${delay}/${categoryId}`),
 }
